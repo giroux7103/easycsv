@@ -1,6 +1,5 @@
 
 
-import io
 
 class Dialect:
     """
@@ -40,16 +39,42 @@ class excel_tab(Dialect):
 
 
 class Reader():
-    def __init__(self, csvfile, dialect):
+    def __init__(self, csvfile, dialect, encoding="utf-8"):
         self._input = None
+        self._fieldbuffer = ""
+        self._linebuffer = ""
+        self._inquote = False
+        self._row = []
         if isinstance(csvfile, str):
-            self._input = open(csvfile, "rb")
+            self._input = open(csvfile, "r", newline="", encoding=encoding)
         self.dialect = dialect
         self.line_num = 0
 
     def __next__(self):
-        pass
-
+        row = []
+        self._linebuffer += next(self._input)
+        self.line_num += 1
+        i = 0
+        end = len(self._linebuffer)
+        while i < end:
+            if self.dialect.quoting == Dialect.QUOTE_NONE:
+                if self._linebuffer[i:].startswith(self.dialect.delimiter):
+                    i += len(self.dialect.delimiter)
+                    self._row.append(self._fieldbuffer)
+                    self._fieldbuffer = ""
+                elif self._linebuffer[i:].startswith(self.dialect.lineterminator):
+                    i += len(self.dialect.lineterminator)
+                    self._row.append(self._fieldbuffer)
+                    self._fieldbuffer = ""
+                    if i < end:
+                        self._linebuffer += self._linebuffer[i:]
+                    else:
+                        self._linebuffer = ""
+                    return self._row
+                else:
+                    self._fieldbuffer += self._linebuffer[i]
+                    i += 1
+                
 
 
 class DictReader(Reader):
